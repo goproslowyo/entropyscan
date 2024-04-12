@@ -55,6 +55,17 @@ pub fn calculate_entropy(filename: &PathBuf) -> Result<FileEntropy, String> {
     }
 }
 
+/// Collect entropies from a [Vec] of [PathBuf]s.
+pub fn collect_entropies(targets: Vec<PathBuf>) -> Vec<FileEntropy> {
+    let mut entropies = Vec::with_capacity(targets.len());
+    for target in targets {
+        if let Ok(entropy) = calculate_entropy(&target) {
+            entropies.push(entropy);
+        }
+    }
+    entropies
+}
+
 /// Collect all files in a directory.
 /// Accepts a [PathBuf].
 pub fn collect_targets(parent_path: PathBuf) -> Vec<PathBuf> {
