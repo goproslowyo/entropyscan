@@ -77,7 +77,7 @@ fn main() -> Result<(), String> {
             println!("Variance: {:.3}", variance(entropies.clone()).unwrap());
             println!("IQR: {:?}", interquartile_range(entropies.clone()).unwrap());
 
-            if !no_outliers {
+            if !no_outliers && targets.len() > 1 {
                 if let Some(outliers) = entropy_outliers(entropies.clone()) {
                     println!("Outliers\n--------");
                     for outlier in outliers {

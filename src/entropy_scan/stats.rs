@@ -69,6 +69,14 @@ pub fn interquartile_range(data: Vec<FileEntropy>) -> Option<Iqr> {
     match data.is_empty() {
         true => None,
         false => {
+            if data.len() == 1 {
+                return Some(Iqr {
+                    q1: data[0].entropy,
+                    q3: data[0].entropy,
+                    range: 0.0,
+                });
+            }
+
             let sorted_data = sort_entropies(data);
             let len = sorted_data.len();
 
