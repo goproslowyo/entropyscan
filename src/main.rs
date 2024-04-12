@@ -1,10 +1,39 @@
-use std::env::args;
+use clap::Parser;
 use std::fs;
+use std::path::PathBuf;
 
-const MAX_FILE_SIZE: u64 = 2147483648; // 2GB
-const MAX_ENTROPY_CHUNK: usize = 2560000; // 2.5MB
+#[derive(Parser)]
+#[command(version, about, long_about=None)]
+struct Cli {
+    #[arg(
+        short,
+        long,
+        value_name = "TARGET",
+        help = "Target file or path to scan"
+    )]
+    /// The target file or path to scan.
+    target: PathBuf,
 
-fn calculate_entropy(filename: &str) -> Result<f64, String> {
+    #[arg(
+        short,
+        long,
+        value_name = "MIN_ENTROPY",
+        help = "Minimum entropy to display",
+        default_value = "0.0"
+    )]
+    /// The minimum entropy to display.
+    min_entropy: Option<f64>,
+}
+
+/// The maximum file size we can scan.
+const MAX_FILE_SIZE: u64 = 2147483648;
+
+/// The chunk size for our files.
+const MAX_ENTROPY_CHUNK: usize = 2560000;
+
+/// Calculate a file's entropy.
+/// Accepts a [str].
+fn calculate_entropy(filename: &PathBuf) -> Result<f64, String> {
     if let Ok(metadata) = fs::metadata(filename) {
         // Check max size
         if metadata.len() > MAX_FILE_SIZE {
@@ -31,7 +60,7 @@ fn calculate_entropy(filename: &str) -> Result<f64, String> {
                         continue;
                     }
                     let p = *count as f64 / total_bytes as f64;
-                    entropy -= p* p.log2();
+                    entropy -= p * p.log2();
                 }
             }
             Ok(entropy)
@@ -43,13 +72,47 @@ fn calculate_entropy(filename: &str) -> Result<f64, String> {
     }
 }
 
-fn main() -> Result<(), String> {
-    if let Some(filename) = args().nth(1) {
-        println!("Scanning: {filename}");
-        let entropy = calculate_entropy(&filename)?;
-        println!("Scanned {filename}: {entropy:.3}");
-        Ok(())
-    } else {
-        panic!("No filename provided");
+/// Collect all files in a directory.
+/// Accepts a [PathBuf].
+fn collect_targets(parent_path: PathBuf) -> Vec<PathBuf> {
+    if parent_path.is_file() {
+        return vec![parent_path];
     }
+    let mut targets = Vec::new();
+    let dir = fs::read_dir(parent_path).unwrap();
+    for entry in dir {
+        let path = entry.unwrap().path();
+        if path.is_dir() {
+            targets.extend(collect_targets(path));
+        } else {
+            targets.push(path);
+        }
+    }
+    targets
+}
+
+/// Main function.
+fn main() -> Result<(), String> {
+    let args = Cli::parse();
+    let parent_path_buf = args.target;
+    let min_entropy = args.min_entropy.unwrap();
+
+    let targets = collect_targets(parent_path_buf);
+    for target in targets {
+        let entropy = calculate_entropy(&target).unwrap();
+        if entropy >= min_entropy {
+            println!("Scanned {target:?}: {entropy:.3}");
+        }
+    }
+
+    // Fancier way to do this
+    // let entropies: Vec<(&PathBuf, f64)> = targets
+    //     .iter()
+    //     .map(|t| (t, calculate_entropy(t).unwrap()))
+    //     .filter(|(_, e)| e >= &min_entropy)
+    //     .collect();
+    // for (p, e) in entropies {
+    //     println!("Scanned {p:?}: {e:.3}");
+    // }
+    Ok(())
 }
