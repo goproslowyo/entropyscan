@@ -13,7 +13,7 @@ const MAX_ENTROPY_CHUNK: usize = 2560000;
 
 /// Calculate a file's entropy.
 /// Accepts a [str].
-pub fn calculate_entropy(filename: &PathBuf) -> Result<FileEntropy, String> {
+fn calculate_entropy(filename: &PathBuf) -> Result<FileEntropy, String> {
     if let Ok(metadata) = fs::metadata(filename) {
         // Check max size
         if metadata.len() > MAX_FILE_SIZE {

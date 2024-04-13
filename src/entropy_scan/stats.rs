@@ -5,7 +5,7 @@ use crate::FileEntropy;
 pub struct Iqr {
     q1: f64,
     q3: f64,
-    range: f64,
+    pub range: f64,
 }
 
 /// Calculate the mean of a [Vec] of [FileEntropy] structs.

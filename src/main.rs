@@ -1,9 +1,9 @@
 use clap::{ Parser, Subcommand };
 use std::path::PathBuf;
+use tabled::Table;
 
 mod entropy_scan;
 use entropy_scan::{
-    calculate_entropy,
     collect_entropies,
     collect_targets,
     structs::FileEntropy,
@@ -12,6 +12,7 @@ use entropy_scan::{
 
 use crate::entropy_scan::stats::entropy_outliers;
 
+/// CLI struct.
 #[derive(Parser)]
 #[command(version, about, long_about = None)]
 struct Cli {
@@ -19,6 +20,7 @@ struct Cli {
     command: Command,
 }
 
+/// Subcommand enum.
 #[derive(Subcommand)]
 enum Command {
     Scan {
@@ -55,34 +57,36 @@ fn main() -> Result<(), String> {
         Scan { target, min_entropy } => {
             let parent_path_buf = target;
             let min_entropy = min_entropy.unwrap();
-
             let targets = collect_targets(parent_path_buf);
-            for target in targets {
-                let fe_struct: FileEntropy = calculate_entropy(&target).unwrap();
-                if fe_struct.entropy >= min_entropy {
-                    println!("{:?}: {:.3}", fe_struct.path, fe_struct.entropy);
-                }
-            }
+            let entropies: Vec<FileEntropy> = collect_entropies(targets)
+                .into_iter()
+                .filter(|e| e.entropy >= min_entropy)
+                .collect();
+            let table = Table::new(entropies).to_string();
+            print!("{table}");
             Ok(())
         }
         Stats { target, no_outliers } => {
-            // let parent_path_buf = target;
             let targets = collect_targets(target.clone());
             let entropies = collect_entropies(targets.clone());
 
-            println!("Statistics for {}", target.to_str().unwrap());
-            println!("Total items scanned: {}", targets.len());
-            println!("Mean entropy: {:.3}", mean(entropies.clone()).unwrap());
-            println!("Median entropy: {:.3}", median(entropies.clone()).unwrap());
-            println!("Variance: {:.3}", variance(entropies.clone()).unwrap());
-            println!("IQR: {:?}", interquartile_range(entropies.clone()).unwrap());
+            let stats = entropy_scan::structs::Stats {
+                target,
+                total: targets.len(),
+                mean: mean(entropies.clone()).unwrap(),
+                median: median(entropies.clone()).unwrap(),
+                variance: variance(entropies.clone()).unwrap(),
+                iqr: interquartile_range(entropies.clone()).unwrap().range,
+            };
+
+            let table = Table::new(vec![stats]);
+            println!("{table}");
 
             if !no_outliers && targets.len() > 1 {
                 if let Some(outliers) = entropy_outliers(entropies.clone()) {
-                    println!("Outliers\n--------");
-                    for outlier in outliers {
-                        println!("{}:\t{:.3}", outlier.path.to_str().unwrap(), outlier.entropy);
-                    }
+                    println!("\n--------Outliers--------");
+                    let outliers_table = Table::new(outliers).to_string();
+                    println!("{outliers_table}");
                 }
             }
             Ok(())
