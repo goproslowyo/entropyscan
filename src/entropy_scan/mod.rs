@@ -1,3 +1,12 @@
+//! This module contains the logic for scanning files for entropy.
+//!
+//! The main functions are: [calculate_entropy], [collect_entropies], and [collect_targets].
+//!
+//! [calculate_entropy] takes a [PathBuf] and returns a [FileEntropy].
+//!
+//! [collect_entropies] takes a [Vec] of [PathBuf]s and returns a [Vec] of [FileEntropy]s.
+//!
+//! [collect_targets] takes a [PathBuf] and returns a [Vec] of [PathBuf]s.
 use std::fs;
 use std::path::PathBuf;
 
@@ -6,13 +15,18 @@ pub mod structs;
 use structs::FileEntropy;
 
 /// The maximum file size we can scan.
+///
+/// This is set to 2GB.
 const MAX_FILE_SIZE: u64 = 2147483648;
 
 /// The chunk size for our files.
+///
+/// This is set to 2.5MB.
 const MAX_ENTROPY_CHUNK: usize = 2560000;
 
 /// Calculate a file's entropy.
-/// Accepts a [str].
+///
+/// Takes a [PathBuf] and returns a [Result] with a [FileEntropy] or an error message.
 fn calculate_entropy(filename: &PathBuf) -> Result<FileEntropy, String> {
     if let Ok(metadata) = fs::metadata(filename) {
         // Check max size
@@ -56,10 +70,13 @@ fn calculate_entropy(filename: &PathBuf) -> Result<FileEntropy, String> {
 }
 
 /// Collect entropies from a [Vec] of [PathBuf]s.
-pub fn collect_entropies(targets: Vec<PathBuf>) -> Vec<FileEntropy> {
+///
+/// Takes a [Vec] of [PathBuf]s and returns a [Vec] of [FileEntropy]s.
+pub fn collect_entropies(targets: &Vec<PathBuf>) -> Vec<FileEntropy> {
     let mut entropies = Vec::with_capacity(targets.len());
+
     for target in targets {
-        if let Ok(entropy) = calculate_entropy(&target) {
+        if let Ok(entropy) = calculate_entropy(target) {
             entropies.push(entropy);
         }
     }
@@ -67,7 +84,8 @@ pub fn collect_entropies(targets: Vec<PathBuf>) -> Vec<FileEntropy> {
 }
 
 /// Collect all files in a directory.
-/// Accepts a [PathBuf].
+///
+/// Takes a [PathBuf] and returns a [Vec] of [PathBuf]s.
 pub fn collect_targets(parent_path: PathBuf) -> Vec<PathBuf> {
     if parent_path.is_file() {
         return vec![parent_path];
